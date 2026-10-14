@@ -22,18 +22,7 @@ joystick_right = nil
 love.mouse.setVisible(false)
 
 function love.load()
-	count_connected_gamepads()
-	if #gamepads >= 2  then
-		controller_state = 2;
-		double_decide_players()
-	elseif #gamepads == 1 then
-		controller_state = 1;
-		single_decide_players()
-	else
-		controller_state = 0;
-	end
-	previous_controller_state = controller_state
-
+	refresh_gamepads()
 	get_dimensions()
 	BALL_SIZE           = width / 100
 	player_left_height  = height/2
@@ -73,7 +62,16 @@ function love.update(dt)
 		paddle_collision_check(previous_ball_x)
 	end
 
-	hot_reload_gamepads(dt)
+	if controller_state == 2 then
+		double_joystick(dt)
+
+	elseif controller_state == 1 then
+		single_joystick(dt)
+
+	else
+		no_joystick(dt)
+	end
+
 	bind_paddles()
 end
 
@@ -89,195 +87,49 @@ function love.draw()
 	-- debug_menu()
 end
 
-function draw_net()
-	local net_width = BALL_SIZE/2;
-	x_position = width/2 - net_width/2;
-	local net_height = height/50;
-	local i = 0
-	while i < height do
-		love.graphics.rectangle("fill", x_position, i, net_width, net_height)
-		i = i + 2*net_height;
-	end
+-- This happens when a joystick is added
+function love.joystickadded(joystick)
+	print("Joystick added:", joystick:getName())
+	refresh_gamepads()
 end
 
-function clear_screen()
-	love.graphics.clear(67/255, 81/255, 83/255, 1)
+-- This happens when a joystick is added
+function love.joystickremoved(joystick)
+	print("Joystick removed:", joystick:getName())
+	refresh_gamepads()
 end
 
+-- Counts the Number of Gamepads 
+-- connected that Love2D supports
+-- determining how controllers controller
+-- the pong game
+function refresh_gamepads()
+	joysticks = love.joystick.getJoysticks()
+	gamepads = {}
 
-function draw_ball()
-	-- Update Ball
-	ball = love.graphics.rectangle("fill", ball_x, ball_y, BALL_SIZE, BALL_SIZE) 
-end
+	local i = 1
 
-function draw_paddles()
-	love.graphics.rectangle("fill", left_paddle_x, player_left_height, PADDLE_X_SIZE, paddle_y_size) -- Left Player 
-	love.graphics.rectangle("fill", right_paddle_x, player_right_height, PADDLE_X_SIZE, paddle_y_size) -- Right Player 
-end
-
--- TODO: How to handle scores bigger than 9? maybe first to 9 wins? 
-function draw_score(digit,x,y)
-	for cell_y,row in ipairs(digit) do
-		for cell_x,cell in ipairs(row) do
-			if cell ~= 0 then
-				love.graphics.rectangle("fill", x+ (cell_x-1)*DIGIT_SIZE, y+ (cell_y-1)*DIGIT_SIZE, DIGIT_SIZE, DIGIT_SIZE)
-			end
+	while #gamepads < 2 and i <= #joysticks do
+		if joysticks[i]:isGamepad() then
+			table.insert(gamepads, joysticks[i])
 		end
+
+		i = i + 1
 	end
-end
 
-function get_dimensions()
-	width, height = love.graphics.getDimensions()
-end
+	if #gamepads >= 2 then
+		controller_state = 2
+		double_decide_players()
 
--- Increases the Speed of the Ball as Players hit the Ball
-function rally_speed_increase()
-	rally_hits = rally_hits + 1
-	speed_multiplier = 1 + 0.30 / (1 + rally_hits / 10)
-	ball_dx  = ball_dx * speed_multiplier
-	ball_dy  = ball_dy * speed_multiplier
-end
+	elseif #gamepads == 1 then
+		controller_state = 1
+		single_decide_players()
 
--- Resets the Ball, Ball Will Go to a Random Player
-function reset_ball_rand()
-	rally_hits = 0;
-	ball_active = false
-	local direction = love.math.random(0, 1)
-	if direction == 0 then
-		direction = 1
 	else
-		direction = -1
-	end
-	local range  = love.math.random()
-	ball_x   = (width/2) - BALL_SIZE/2
-	ball_y   = (height/2)
-	ball_dx  = direction*(width/4)
-	ball_dy  = range*(width/4)
-end
-
--- Resets the Ball, Ball Will Go to the Right Player
-function reset_ball_right()
-	rally_hits = 0;
-	ball_active = false
-	local range  = love.math.random()
-	ball_x  = (width/2) - BALL_SIZE/2
-	ball_y  = (height/2)
-	ball_dx = (width/4)
-	ball_dy = range * (width/4)
-end
-
--- Resets the Ball, Ball Will Go to the Left Player
-function reset_ball_left()
-	rally_hits = 0;
-	ball_active = false
-	local range  = love.math.random()
-	ball_x  = (width/2) - BALL_SIZE/2
-	ball_y  = (height/2)
-	ball_dx = -1 * (width/4)
-	ball_dy = range * (width/4)
-end
-
-
--- Determines whether the Ball bounces off a top or bottom wall
--- or whether Right or Left scored
-function wall_collision_check()
-
-	-- Right Score Collision check
-	if ball_x > width - BALL_SIZE then
-		left_score = left_score + 1
-		spawn_timer = 2
-		-- rally_hits = 0
-		-- ball_active = false
-		reset_ball_right()
-	end
-
-	-- Left Score Collision check
-	if ball_x <= 0 then
-		right_score = right_score + 1
-		spawn_timer = 2
-		-- ball_active = false
-		-- rally_hits = 0;
-		reset_ball_left()
-	end
-
-	-- Top Wall Collision Check
-	if ball_y > height - BALL_SIZE then
-		ball_y  = height - BALL_SIZE
-		ball_dy = ball_dy * -1
-	end
-
-	-- Bottom Wall Collision Check
-	if ball_y <= 0 then
-		ball_y = 0
-		ball_dy = ball_dy * -1
+		controller_state = 0
 	end
 end
 
-function paddle_collision_check(previous_ball_x)
-	-- Player Left's Hitbox
-	if ball_x < left_paddle_x + PADDLE_X_SIZE        -- Right Edge 
-	and ball_x + BALL_SIZE > left_paddle_x           -- Left Edge
-	and ball_y < player_left_height + paddle_y_size  -- Top Edge
-	and ball_y + BALL_SIZE > player_left_height then -- Bottom Edge
-
-		-- Ball came from the LEFT side of the paddle
-		if previous_ball_x + BALL_SIZE <= left_paddle_x then
-			ball_x  = left_paddle_x - BALL_SIZE
-			ball_dx = -math.abs(ball_dx)
-			rally_speed_increase()
-
-		-- Ball came from the RIGHT side of the paddle
-		elseif previous_ball_x >= left_paddle_x + PADDLE_X_SIZE then
-			ball_x  = left_paddle_x + PADDLE_X_SIZE
-			ball_dx = math.abs(ball_dx)
-			rally_speed_increase()
-		end
-	end
-
-	-- Player Right's Hitbox
-	if ball_x < right_paddle_x + PADDLE_X_SIZE        -- Right Edge
-	and ball_x + BALL_SIZE > right_paddle_x           -- Left Edge
-	and ball_y < player_right_height + paddle_y_size  -- Top Edge
-	and ball_y + BALL_SIZE > player_right_height then -- Bottom Edge
-
-		-- Ball came from the LEFT side
-		if previous_ball_x + BALL_SIZE <= right_paddle_x then
-			ball_x  = right_paddle_x - BALL_SIZE
-			ball_dx = -math.abs(ball_dx)
-			rally_speed_increase()
-
-		-- Ball came from the RIGHT side
-		elseif previous_ball_x >= right_paddle_x + PADDLE_X_SIZE then
-			ball_x  = right_paddle_x + PADDLE_X_SIZE
-			ball_dx = math.abs(ball_dx)
-			rally_speed_increase()
-		end
-	end
-end
-
--- Ensures that Left and Right Paddles cannot
--- go off the screen!
-function bind_paddles()
-	-- Bind Left Player
-	-- Can't go off the bottom of the screen
-	if player_left_height < 0 then
-		player_left_height = 0
-	end
-	-- Can't go off the top of the screen
-	if player_left_height > height - paddle_y_size then
-		player_left_height = height - paddle_y_size
-	end
-
-	-- Bind Right Player
-	-- Can't go off the bottom of the screen
-	if player_right_height < 0 then
-		player_right_height = 0
-	end
-	-- Can't go off the top of the screen
-	if player_right_height > height - paddle_y_size then
-		player_right_height = height - paddle_y_size
-	end
-end
 
 -- Only Keyboard!
 function no_joystick(dt)
@@ -424,74 +276,202 @@ function double_joystick(dt)
 end
 
 
+function clear_screen()
+	love.graphics.clear(67/255, 81/255, 83/255, 1)
+end
 
--- Counts the Number of Gamepads 
--- connected that Love2D supports
-function count_connected_gamepads()
-	joysticks = love.joystick.getJoysticks()
-	gamepads = {}
-
-	local i = 1
-
-	while #gamepads < 2 and i <= #joysticks do
-		if joysticks[i]:isGamepad() then
-			table.insert(gamepads, joysticks[i])
-		end
-		i = i + 1
+function draw_net()
+	local net_width = BALL_SIZE/2;
+	x_position = width/2 - net_width/2;
+	local net_height = height/50;
+	local i = 0
+	while i < height do
+		love.graphics.rectangle("fill", x_position, i, net_width, net_height)
+		i = i + 2*net_height;
 	end
 end
 
+function draw_ball()
+	-- Update Ball
+	ball = love.graphics.rectangle("fill", ball_x, ball_y, BALL_SIZE, BALL_SIZE) 
+end
 
-function hot_reload_gamepads(dt)
-	joysticks = love.joystick.getJoysticks()
-	gamepads = {}
+function draw_paddles()
+	love.graphics.rectangle("fill", left_paddle_x, player_left_height, PADDLE_X_SIZE, paddle_y_size) -- Left Player 
+	love.graphics.rectangle("fill", right_paddle_x, player_right_height, PADDLE_X_SIZE, paddle_y_size) -- Right Player 
+end
 
-	local i = 1
-
-	while #gamepads < 2 and i <= #joysticks do
-		if joysticks[i]:isGamepad() then
-			table.insert(gamepads, joysticks[i])
+-- TODO: How to handle scores bigger than 9? maybe first to 9 wins? 
+function draw_score(digit,x,y)
+	for cell_y,row in ipairs(digit) do
+		for cell_x,cell in ipairs(row) do
+			if cell ~= 0 then
+				love.graphics.rectangle("fill", x+ (cell_x-1)*DIGIT_SIZE, y+ (cell_y-1)*DIGIT_SIZE, DIGIT_SIZE, DIGIT_SIZE)
+			end
 		end
-		i = i + 1
 	end
-	
-	local new_controller_state
-	if #gamepads >= 2 then
-			new_controller_state = 2
-		elseif #gamepads == 1 then
-			new_controller_state = 1
-		else
-			new_controller_state = 0
-		end
+end
 
-	if previous_controller_state ~= new_controller_state then
-		if #gamepads >= 2  then
-			controller_state = 2;
-			double_decide_players()
-		elseif #gamepads == 1 then
-			controller_state = 1;
-			single_decide_players()
-		else
-			controller_state = 0;
-		end
-		previous_controller_state = controller_state
-	end
+function get_dimensions()
+	width, height = love.graphics.getDimensions()
+end
 
-	if controller_state == 2 then
-		double_joystick(dt)
-	elseif controller_state == 1 then
-		single_joystick(dt)
+-- Increases the Speed of the Ball as Players hit the Ball
+function rally_speed_increase()
+	rally_hits = rally_hits + 1
+	speed_multiplier = 1 + 0.30 / (1 + rally_hits / 10)
+	ball_dx  = ball_dx * speed_multiplier
+	ball_dy  = ball_dy * speed_multiplier
+end
+
+-- Resets the Ball, Ball Will Go to a Random Player
+function reset_ball_rand()
+	rally_hits = 0;
+	ball_active = false
+	local direction = love.math.random(0, 1)
+	if direction == 0 then
+		direction = 1
 	else
-		no_joystick(dt)
+		direction = -1
+	end
+	local range  = love.math.random()
+	ball_x   = (width/2) - BALL_SIZE/2
+	ball_y   = (height/2)
+	ball_dx  = direction*(width/4)
+	ball_dy  = range*(width/4)
+end
+
+-- Resets the Ball, Ball Will Go to the Right Player
+function reset_ball_right()
+	rally_hits = 0;
+	ball_active = false
+	local range  = love.math.random()
+	ball_x  = (width/2) - BALL_SIZE/2
+	ball_y  = (height/2)
+	ball_dx = (width/4)
+	ball_dy = range * (width/4)
+end
+
+-- Resets the Ball, Ball Will Go to the Left Player
+function reset_ball_left()
+	rally_hits = 0;
+	ball_active = false
+	local range  = love.math.random()
+	ball_x  = (width/2) - BALL_SIZE/2
+	ball_y  = (height/2)
+	ball_dx = -1 * (width/4)
+	ball_dy = range * (width/4)
+end
+
+
+-- Determines whether the Ball bounces off a top or bottom wall
+-- or whether Right or Left scored
+function wall_collision_check()
+
+	-- Right Score Collision check
+	if ball_x > width - BALL_SIZE then
+		left_score = left_score + 1
+		spawn_timer = 2
+		-- rally_hits = 0
+		-- ball_active = false
+		reset_ball_right()
+	end
+
+	-- Left Score Collision check
+	if ball_x <= 0 then
+		right_score = right_score + 1
+		spawn_timer = 2
+		-- ball_active = false
+		-- rally_hits = 0;
+		reset_ball_left()
+	end
+
+	-- Top Wall Collision Check
+	if ball_y > height - BALL_SIZE then
+		ball_y  = height - BALL_SIZE
+		ball_dy = ball_dy * -1
+	end
+
+	-- Bottom Wall Collision Check
+	if ball_y <= 0 then
+		ball_y = 0
+		ball_dy = ball_dy * -1
 	end
 end
+
+
+-- Ensures that Left and Right Paddles cannot
+-- go off the screen!
+function bind_paddles()
+	-- Bind Left Player
+	-- Can't go off the bottom of the screen
+	if player_left_height < 0 then
+		player_left_height = 0
+	end
+	-- Can't go off the top of the screen
+	if player_left_height > height - paddle_y_size then
+		player_left_height = height - paddle_y_size
+	end
+
+	-- Bind Right Player
+	-- Can't go off the bottom of the screen
+	if player_right_height < 0 then
+		player_right_height = 0
+	end
+	-- Can't go off the top of the screen
+	if player_right_height > height - paddle_y_size then
+		player_right_height = height - paddle_y_size
+	end
+end
+
+function paddle_collision_check(previous_ball_x)
+	-- Player Left's Hitbox
+	if ball_x < left_paddle_x + PADDLE_X_SIZE        -- Right Edge 
+	and ball_x + BALL_SIZE > left_paddle_x           -- Left Edge
+	and ball_y < player_left_height + paddle_y_size  -- Top Edge
+	and ball_y + BALL_SIZE > player_left_height then -- Bottom Edge
+
+		-- Ball came from the LEFT side of the paddle
+		if previous_ball_x + BALL_SIZE <= left_paddle_x then
+			ball_x  = left_paddle_x - BALL_SIZE
+			ball_dx = -math.abs(ball_dx)
+			rally_speed_increase()
+
+		-- Ball came from the RIGHT side of the paddle
+		elseif previous_ball_x >= left_paddle_x + PADDLE_X_SIZE then
+			ball_x  = left_paddle_x + PADDLE_X_SIZE
+			ball_dx = math.abs(ball_dx)
+			rally_speed_increase()
+		end
+	end
+
+	-- Player Right's Hitbox
+	if ball_x < right_paddle_x + PADDLE_X_SIZE        -- Right Edge
+	and ball_x + BALL_SIZE > right_paddle_x           -- Left Edge
+	and ball_y < player_right_height + paddle_y_size  -- Top Edge
+	and ball_y + BALL_SIZE > player_right_height then -- Bottom Edge
+
+		-- Ball came from the LEFT side
+		if previous_ball_x + BALL_SIZE <= right_paddle_x then
+			ball_x  = right_paddle_x - BALL_SIZE
+			ball_dx = -math.abs(ball_dx)
+			rally_speed_increase()
+
+		-- Ball came from the RIGHT side
+		elseif previous_ball_x >= right_paddle_x + PADDLE_X_SIZE then
+			ball_x  = right_paddle_x + PADDLE_X_SIZE
+			ball_dx = math.abs(ball_dx)
+			rally_speed_increase()
+		end
+	end
+end
+
+
 
 function debug_menu()
-	-- Debug
+	-- Debug Information
 	debug_ball_position_x = love.graphics.print(ball_x, 0, 0)
 	debug_ball_position_y = love.graphics.print(ball_y, 100, 0)
-	-- debug_left_y          = love.graphics.print(joystick:getGamepadAxis("lefty"), 0, 10)
-	-- debug_right_y         = love.graphics.print(joystick:getGamepadAxis("righty"), 0, 20)
 	debug_rally           = love.graphics.print(rally_hits, 0, 30)
 	debug_ball_dx         = love.graphics.print(ball_dx, 0, 40)
 	debug_ball_dy         = love.graphics.print(ball_dx, 100, 40)
