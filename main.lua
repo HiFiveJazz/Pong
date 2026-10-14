@@ -32,6 +32,7 @@ function love.load()
 	else
 		controller_state = 0;
 	end
+	previous_controller_state = controller_state
 
 	get_dimensions()
 	BALL_SIZE           = width / 100
@@ -72,14 +73,7 @@ function love.update(dt)
 		paddle_collision_check(previous_ball_x)
 	end
 
-	if controller_state == 2 then
-		double_joystick(dt)
-	elseif controller_state == 1 then
-		single_joystick(dt)
-	else
-		no_joystick(dt)
-	end
-
+	hot_reload_gamepads(dt)
 	bind_paddles()
 end
 
@@ -448,14 +442,56 @@ function count_connected_gamepads()
 end
 
 
+function hot_reload_gamepads(dt)
+	joysticks = love.joystick.getJoysticks()
+	gamepads = {}
 
+	local i = 1
+
+	while #gamepads < 2 and i <= #joysticks do
+		if joysticks[i]:isGamepad() then
+			table.insert(gamepads, joysticks[i])
+		end
+		i = i + 1
+	end
+	
+	local new_controller_state
+	if #gamepads >= 2 then
+			new_controller_state = 2
+		elseif #gamepads == 1 then
+			new_controller_state = 1
+		else
+			new_controller_state = 0
+		end
+
+	if previous_controller_state ~= new_controller_state then
+		if #gamepads >= 2  then
+			controller_state = 2;
+			double_decide_players()
+		elseif #gamepads == 1 then
+			controller_state = 1;
+			single_decide_players()
+		else
+			controller_state = 0;
+		end
+		previous_controller_state = controller_state
+	end
+
+	if controller_state == 2 then
+		double_joystick(dt)
+	elseif controller_state == 1 then
+		single_joystick(dt)
+	else
+		no_joystick(dt)
+	end
+end
 
 function debug_menu()
 	-- Debug
 	debug_ball_position_x = love.graphics.print(ball_x, 0, 0)
 	debug_ball_position_y = love.graphics.print(ball_y, 100, 0)
-	debug_left_y          = love.graphics.print(joystick:getGamepadAxis("lefty"), 0, 10)
-	debug_right_y         = love.graphics.print(joystick:getGamepadAxis("righty"), 0, 20)
+	-- debug_left_y          = love.graphics.print(joystick:getGamepadAxis("lefty"), 0, 10)
+	-- debug_right_y         = love.graphics.print(joystick:getGamepadAxis("righty"), 0, 20)
 	debug_rally           = love.graphics.print(rally_hits, 0, 30)
 	debug_ball_dx         = love.graphics.print(ball_dx, 0, 40)
 	debug_ball_dy         = love.graphics.print(ball_dx, 100, 40)
