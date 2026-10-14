@@ -1,68 +1,56 @@
 -- Ball Properties
 BALL_SPEED    = 200
--- Paddle Properties
--- PADDLE_X_SIZE = BALL_SIZE
---
--- -- Score Properties
--- DIGIT_SIZE    = BALL_SIZE
--- digits = {
--- 	[0] = {{1,1,1},{1,0,1},{1,0,1},{1,0,1},{1,1,1},},
--- 	[1] = {{1,1,0},{0,1,0},{0,1,0},{0,1,0},{1,1,1},},
--- 	[2] = {{1,1,1},{0,0,1},{1,1,1},{1,0,0},{1,1,1},},
--- 	[3] = {{1,1,1},{0,0,1},{1,1,1},{0,0,1},{1,1,1},},
--- 	[4] = {{1,0,1},{1,0,1},{1,1,1},{0,0,1},{0,0,1},},
--- 	[5] = {{1,1,1},{1,0,0},{1,1,1},{0,0,1},{1,1,1},},
--- 	[6] = {{1,1,1},{1,0,0},{1,1,1},{1,0,1},{1,1,1},},
--- 	[7] = {{1,1,1},{0,0,1},{0,0,1},{0,0,1},{0,0,1},},
--- 	[8] = {{1,1,1},{1,0,1},{1,1,1},{1,0,1},{1,1,1},},
--- 	[9] = {{1,1,1},{1,0,1},{1,1,1},{0,0,1},{0,0,1},},
--- }
 
-left_score  = 0
-right_score = 0
-joystick = nil
+digits = {
+	[0] = {{1,1,1},{1,0,1},{1,0,1},{1,0,1},{1,1,1},},
+	[1] = {{1,1,0},{0,1,0},{0,1,0},{0,1,0},{1,1,1},},
+	[2] = {{1,1,1},{0,0,1},{1,1,1},{1,0,0},{1,1,1},},
+	[3] = {{1,1,1},{0,0,1},{1,1,1},{0,0,1},{1,1,1},},
+	[4] = {{1,0,1},{1,0,1},{1,1,1},{0,0,1},{0,0,1},},
+	[5] = {{1,1,1},{1,0,0},{1,1,1},{0,0,1},{1,1,1},},
+	[6] = {{1,1,1},{1,0,0},{1,1,1},{1,0,1},{1,1,1},},
+	[7] = {{1,1,1},{0,0,1},{0,0,1},{0,0,1},{0,0,1},},
+	[8] = {{1,1,1},{1,0,1},{1,1,1},{1,0,1},{1,1,1},},
+	[9] = {{1,1,1},{1,0,1},{1,1,1},{0,0,1},{0,0,1},},
+}
+
+left_score     = 0
+right_score    = 0
+joystick       = nil
+joystick_left  = nil
+joystick_right = nil
+love.mouse.setVisible(false)
 
 function love.load()
-	-- Joystick Handling
-	local joysticks = love.joystick.getJoysticks()
-	joystick = joysticks[1]
-	if joystick then
-		print("Joystick FOUND:", joystick)
-		print("Is gamepad:", joystick:isGamepad())
-		print("Axis Count:", joystick:getAxisCount())
+	count_connected_gamepads()
+	if #gamepads >= 2  then
+		controller_state = 2;
+		double_decide_players()
+	elseif #gamepads == 1 then
+		controller_state = 1;
+		single_decide_players()
 	else
-		print("Joystick NOT FOUND")
+		controller_state = 0;
 	end
 
-	-- Initial Player Positions
 	get_dimensions()
-	BALL_SIZE     = width / 100
+	BALL_SIZE           = width / 100
 	player_left_height  = height/2
 	player_right_height = height/2
+
+	-- Initial Player Positions
 	reset_ball_rand()
-	spawn_timer = 5 
+	spawn_timer         = 5
 end
 
 function love.update(dt)
-	-- Allows for game to be hot-resizeable window!
+	-- Allows for game to be hot-resizable window!
 	get_dimensions()
 	BALL_SIZE     = width / 100
 	PADDLE_X_SIZE = BALL_SIZE
 
 	-- Score Properties
 	DIGIT_SIZE    = BALL_SIZE
-	digits = {
-		[0] = {{1,1,1},{1,0,1},{1,0,1},{1,0,1},{1,1,1},},
-		[1] = {{1,1,0},{0,1,0},{0,1,0},{0,1,0},{1,1,1},},
-		[2] = {{1,1,1},{0,0,1},{1,1,1},{1,0,0},{1,1,1},},
-		[3] = {{1,1,1},{0,0,1},{1,1,1},{0,0,1},{1,1,1},},
-		[4] = {{1,0,1},{1,0,1},{1,1,1},{0,0,1},{0,0,1},},
-		[5] = {{1,1,1},{1,0,0},{1,1,1},{0,0,1},{1,1,1},},
-		[6] = {{1,1,1},{1,0,0},{1,1,1},{1,0,1},{1,1,1},},
-		[7] = {{1,1,1},{0,0,1},{0,0,1},{0,0,1},{0,0,1},},
-		[8] = {{1,1,1},{1,0,1},{1,1,1},{1,0,1},{1,1,1},},
-		[9] = {{1,1,1},{1,0,1},{1,1,1},{0,0,1},{0,0,1},},
-	}
 	paddle_y_size = 0.07 * height
 	paddle_speed = (2/3) * height
 	left_paddle_x        = width/80
@@ -84,66 +72,15 @@ function love.update(dt)
 		paddle_collision_check(previous_ball_x)
 	end
 
-	-- Controls
-	-- Left Player Controls
-	if love.keyboard.isDown("w") then
-		player_left_height = player_left_height - paddle_speed*dt
-	end
-	if love.keyboard.isDown("s") then
-		player_left_height = player_left_height + paddle_speed*dt
-	end
-
-	-- TODO: Ensure that controller scheme is 
-	-- either Mouse or Keyboard, not both like 
-	-- it currently is 
-
-	-- Joy Stick Controls
-	if joystick then
-		left_stick_y  = joystick:getGamepadAxis("lefty")   -- Left Analog Stick
-		right_stick_y = joystick:getGamepadAxis("righty") -- Right Analog Stick
-
-		-- Left Player
-		if joystick:isGamepadDown("dpup") or (left_stick_y < -0.125) then
-			player_left_height = player_left_height - paddle_speed*dt
-		end
-
-		if joystick:isGamepadDown("dpdown") or (left_stick_y > 0.125) then
-			player_left_height = player_left_height + paddle_speed*dt
-		end
-
-		-- Right Player
-		if (right_stick_y < -0.125) then
-			player_right_height = player_right_height - paddle_speed*dt
-		end
-
-		if (right_stick_y > 0.125) then
-			player_right_height = player_right_height + paddle_speed*dt
-		end
+	if controller_state == 2 then
+		double_joystick(dt)
+	elseif controller_state == 1 then
+		single_joystick(dt)
+	else
+		no_joystick(dt)
 	end
 
-	-- Right Player Controls
-	if love.keyboard.isDown("up") or love.keyboard.isDown("k") then
-		player_right_height = player_right_height - paddle_speed*dt
-	end
-	if love.keyboard.isDown("down") or love.keyboard.isDown("j") then
-		player_right_height = player_right_height + paddle_speed*dt
-	end
-
-	-- Bind Left Player
-	if player_left_height < 0 then
-		player_left_height = 0
-	end
-	if player_left_height > height - paddle_y_size then
-		player_left_height = height - paddle_y_size
-	end
-
-	-- Bind Right Player
-	if player_right_height < 0 then
-		player_right_height = 0
-	end
-	if player_right_height > height - paddle_y_size then
-		player_right_height = height - paddle_y_size
-	end
+	bind_paddles()
 end
 
 function love.draw()
@@ -288,7 +225,7 @@ function paddle_collision_check(previous_ball_x)
 	and ball_x + BALL_SIZE > left_paddle_x           -- Left Edge
 	and ball_y < player_left_height + paddle_y_size  -- Top Edge
 	and ball_y + BALL_SIZE > player_left_height then -- Bottom Edge
-	
+
 		-- Ball came from the LEFT side of the paddle
 		if previous_ball_x + BALL_SIZE <= left_paddle_x then
 			ball_x  = left_paddle_x - BALL_SIZE
@@ -323,6 +260,195 @@ function paddle_collision_check(previous_ball_x)
 		end
 	end
 end
+
+-- Ensures that Left and Right Paddles cannot
+-- go off the screen!
+function bind_paddles()
+	-- Bind Left Player
+	-- Can't go off the bottom of the screen
+	if player_left_height < 0 then
+		player_left_height = 0
+	end
+	-- Can't go off the top of the screen
+	if player_left_height > height - paddle_y_size then
+		player_left_height = height - paddle_y_size
+	end
+
+	-- Bind Right Player
+	-- Can't go off the bottom of the screen
+	if player_right_height < 0 then
+		player_right_height = 0
+	end
+	-- Can't go off the top of the screen
+	if player_right_height > height - paddle_y_size then
+		player_right_height = height - paddle_y_size
+	end
+end
+
+-- Only Keyboard!
+function no_joystick(dt)
+	-- Left Keyboard Side, Left Player
+	-- Right Keyboard Side, Right Player
+
+	-- Left Player Controls
+	if love.keyboard.isDown("w") then
+		player_left_height = player_left_height - paddle_speed*dt
+	end
+	if love.keyboard.isDown("s") then
+		player_left_height = player_left_height + paddle_speed*dt
+	end
+
+	-- Right Player Controls
+	if love.keyboard.isDown("up") or love.keyboard.isDown("k") then
+		player_right_height = player_right_height - paddle_speed*dt
+	end
+	if love.keyboard.isDown("down") or love.keyboard.isDown("j") then
+		player_right_height = player_right_height + paddle_speed*dt
+	end
+end
+
+
+-- Assign Players to Controller and Keyboard
+function single_decide_players()
+	-- Randomly determine who gets left and right player
+	-- I think that's fair!
+	side = love.math.random(0, 1)
+	controller = gamepads[1]
+end
+
+-- One Controller, One Keyboard!
+function single_joystick(dt)
+	-- Keyboard Left, Controller Right
+	left_stick_y  = controller:getGamepadAxis("lefty")  -- P1 Left Analog Stick
+	right_stick_y = controller:getGamepadAxis("righty") -- P1 Right Analog Stick
+	if side == 0 then
+		-- Keyboard Controls
+		if love.keyboard.isDown("w")
+		or love.keyboard.isDown("up")
+		or love.keyboard.isDown("k") then -- For Vim enjoyers
+			player_left_height = player_left_height - paddle_speed*dt
+		end
+		if love.keyboard.isDown("s")
+		or love.keyboard.isDown("down")
+		or love.keyboard.isDown("j") then -- For Vim enjoyers
+			player_left_height = player_left_height + paddle_speed*dt
+		end
+
+		-- Controller Controls
+		if controller:isGamepadDown("dpup")
+		or (left_stick_y < -0.125)
+		or (right_stick_y < -0.125) then
+			player_right_height = player_right_height - paddle_speed*dt
+		end
+
+		if controller:isGamepadDown("dpdown")
+		or (left_stick_y > 0.125)
+		or (right_stick_y > 0.125) then
+			player_right_height = player_right_height + paddle_speed*dt
+		end
+	else
+		-- Controller Left, Keyboard Right
+
+		-- Controller Controls
+		if controller:isGamepadDown("dpup")
+		or (left_stick_y < -0.125)
+		or (right_stick_y < -0.125) then
+			player_left_height = player_left_height - paddle_speed*dt
+		end
+
+		if controller:isGamepadDown("dpdown")
+		or (left_stick_y > 0.125)
+		or (right_stick_y > 0.125) then
+			player_left_height = player_left_height + paddle_speed*dt
+		end
+
+		-- Keyboard Controls
+		if love.keyboard.isDown("w")
+		or love.keyboard.isDown("up")
+		or love.keyboard.isDown("k") then -- For Vim enjoyers
+			player_right_height = player_right_height - paddle_speed*dt
+		end
+		if love.keyboard.isDown("s")
+		or love.keyboard.isDown("down")
+		or love.keyboard.isDown("j") then -- For Vim enjoyers
+			player_right_height = player_right_height + paddle_speed*dt
+		end
+
+	end
+end
+
+-- Assigns Players to 2 Joysticks!
+function double_decide_players()
+	-- Randomly determine who gets left and right player
+	-- I think that's fair!
+    local random_player = love.math.random(0,1)
+	if random_player == 0 then
+		player1_controller = gamepads[1]
+		player2_controller = gamepads[2]
+	else
+		player1_controller = gamepads[2]
+		player2_controller = gamepads[1]
+	end
+end
+
+-- Yay, we have two joysticks to play with :) enjoy with a 
+-- friend or loved one!
+function double_joystick(dt)
+
+	-- Joystick Controls
+	-- Player 1 Controls
+	player1_left_stick_y  = player1_controller:getGamepadAxis("lefty")   -- P1 Left Analog Stick
+	player1_right_stick_y = player1_controller:getGamepadAxis("righty") -- P1 Right Analog Stick
+
+	if player1_controller:isGamepadDown("dpup")
+	or (player1_left_stick_y < -0.125)
+	or (player1_right_stick_y < -0.125) then
+		player_left_height = player_left_height - paddle_speed*dt
+	end
+
+	if player1_controller:isGamepadDown("dpdown")
+	or (player1_left_stick_y > 0.125)
+	or (player1_right_stick_y > 0.125) then
+		player_left_height = player_left_height + paddle_speed*dt
+	end
+
+	-- Player 2 Controls
+	player2_left_stick_y  = player2_controller:getGamepadAxis("lefty")   -- P2 Left Analog Stick
+	player2_right_stick_y = player2_controller:getGamepadAxis("righty") -- P2 Right Analog Stick
+
+	if player2_controller:isGamepadDown("dpup")
+	or (player2_left_stick_y < -0.125)
+	or (player2_right_stick_y < -0.125) then
+		player_right_height = player_right_height - paddle_speed*dt
+	end
+
+	if player2_controller:isGamepadDown("dpdown")
+	or (player2_left_stick_y > 0.125)
+	or (player2_right_stick_y > 0.125) then
+		player_right_height = player_right_height + paddle_speed*dt
+	end
+end
+
+
+
+-- Counts the Number of Gamepads 
+-- connected that Love2D supports
+function count_connected_gamepads()
+	joysticks = love.joystick.getJoysticks()
+	gamepads = {}
+
+	local i = 1
+
+	while #gamepads < 2 and i <= #joysticks do
+		if joysticks[i]:isGamepad() then
+			table.insert(gamepads, joysticks[i])
+		end
+		i = i + 1
+	end
+end
+
+
+
 
 function debug_menu()
 	-- Debug
