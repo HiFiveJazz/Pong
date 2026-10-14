@@ -93,7 +93,6 @@ function love.update(dt)
 
 	elseif controller_state == 1 then
 		single_joystick(dt)
-
 	else
 		no_joystick(dt)
 	end
@@ -107,9 +106,20 @@ function love.draw()
 	draw_net()
 	draw_paddles()
 	-- Left Player's Score
-	draw_score(digits[left_score], width/2 - 4*DIGIT_SIZE - 10,10)
+	local score_gap = 2 * DIGIT_SIZE
+	local left_score_width = get_score_width(left_score)
+
+	draw_score(
+		left_score,
+		width/2 - score_gap - left_score_width,
+		10
+	)
 	-- Right Player's Score
-	draw_score(digits[right_score], width/2 + 10 + DIGIT_SIZE, 10)
+	draw_score(
+		right_score,
+		width/2 + score_gap,
+		10
+	)
 	-- debug_menu()
 end
 
@@ -333,11 +343,22 @@ function draw_paddles()
 end
 
 -- TODO: How to handle scores bigger than 9? maybe first to 9 wins? 
-function draw_score(digit,x,y)
-	for cell_y,row in ipairs(digit) do
-		for cell_x,cell in ipairs(row) do
-			if cell ~= 0 then
-				love.graphics.rectangle("fill", x+ (cell_x-1)*DIGIT_SIZE, y+ (cell_y-1)*DIGIT_SIZE, DIGIT_SIZE, DIGIT_SIZE)
+function draw_score(score,x,y)
+	local score_string = tostring(score)
+	for i = 1, #score_string do
+		local digit_number = tonumber(score_string:sub(i,i))
+		local digit = digits[digit_number]
+
+		for cell_y,row in ipairs(digit) do
+			for cell_x,cell in ipairs(row) do
+				if cell ~= 0 then
+					love.graphics.rectangle("fill",
+							x+(i-1)*4*DIGIT_SIZE + (cell_x-1)*DIGIT_SIZE,
+							y+ (cell_y-1)*DIGIT_SIZE,
+							DIGIT_SIZE,
+							DIGIT_SIZE
+						)
+				end
 			end
 		end
 	end
@@ -399,25 +420,40 @@ end
 function wall_collision_check(success_sounds, wall_sounds)
 	local success_sound = success_sounds[love.math.random(1, #success_sounds)]
 	local wall_sound = wall_sounds[love.math.random(1, #wall_sounds)]
-	-- Right Score Collision check
+	
+	-- Left Player Scored
 	if ball_x > width - BALL_SIZE then
 		left_score = left_score + 1
 		spawn_timer = 2
 		success_sound:stop()
 		success_sound:play()
-		-- rally_hits = 0
-		-- ball_active = false
+		if controller_state == 2 then
+			if player1_controller:isVibrationSupported() then
+				player1_controller:setVibration(0.25, 0.25, 2)
+			end
+		elseif controller_state == 1 and side ~= 0 then
+			if controller:isVibrationSupported() then
+				controller:setVibration(0.25,0.25,2)
+			end
+		end
 		reset_ball_right()
 	end
 
-	-- Left Score Collision check
+	-- Right Player Scored
 	if ball_x <= 0 then
 		right_score = right_score + 1
 		spawn_timer = 2
 		success_sound:stop()
 		success_sound:play()
-		-- ball_active = false
-		-- rally_hits = 0;
+		if controller_state == 2 then
+			if player2_controller:isVibrationSupported() then
+				player2_controller:setVibration(0.25, 0.25, 2)
+			end
+		elseif controller_state == 1 and side == 0 then
+			if controller:isVibrationSupported() then
+				controller:setVibration(0.25, 0.25, 2)
+			end
+		end
 		reset_ball_left()
 	end
 
@@ -460,6 +496,13 @@ function bind_paddles()
 	if player_right_height > height - paddle_y_size then
 		player_right_height = height - paddle_y_size
 	end
+end
+
+function get_score_width(score)
+	local digit_count = #tostring(score)
+
+	return digit_count * 3 * DIGIT_SIZE
+	     + (digit_count - 1) * DIGIT_SIZE
 end
 
 function paddle_collision_check(previous_ball_x, hit_sounds)
