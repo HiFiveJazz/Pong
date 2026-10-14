@@ -1,5 +1,5 @@
 -- Ball Properties
-BALL_SPEED    = 200
+BALL_SPEED = 200
 
 digits = {
 	[0] = {{1,1,1},{1,0,1},{1,0,1},{1,0,1},{1,1,1},},
@@ -19,6 +19,7 @@ right_score    = 0
 joystick       = nil
 joystick_left  = nil
 joystick_right = nil
+
 love.mouse.setVisible(false)
 
 function love.load()
@@ -62,6 +63,10 @@ function love.update(dt)
 		paddle_collision_check(previous_ball_x)
 	end
 
+	-- Controller State determines
+	-- what controller layout we use.
+	-- See refresh_gamepads() for 
+	-- more information
 	if controller_state == 2 then
 		double_joystick(dt)
 
@@ -87,13 +92,13 @@ function love.draw()
 	-- debug_menu()
 end
 
--- This happens when a joystick is added
+-- When Joystick is added, hot-reload it!
 function love.joystickadded(joystick)
 	print("Joystick added:", joystick:getName())
 	refresh_gamepads()
 end
 
--- This happens when a joystick is added
+-- When Joystick is removed, hot-reload it!
 function love.joystickremoved(joystick)
 	print("Joystick removed:", joystick:getName())
 	refresh_gamepads()
@@ -109,6 +114,8 @@ function refresh_gamepads()
 
 	local i = 1
 
+	-- Count the total number of Gamepads
+	-- that Love2D supports
 	while #gamepads < 2 and i <= #joysticks do
 		if joysticks[i]:isGamepad() then
 			table.insert(gamepads, joysticks[i])
@@ -129,7 +136,6 @@ function refresh_gamepads()
 		controller_state = 0
 	end
 end
-
 
 -- Only Keyboard!
 function no_joystick(dt)
@@ -152,7 +158,6 @@ function no_joystick(dt)
 		player_right_height = player_right_height + paddle_speed*dt
 	end
 end
-
 
 -- Assign Players to Controller and Keyboard
 function single_decide_players()
@@ -275,7 +280,6 @@ function double_joystick(dt)
 	end
 end
 
-
 function clear_screen()
 	love.graphics.clear(67/255, 81/255, 83/255, 1)
 end
@@ -363,7 +367,6 @@ function reset_ball_left()
 	ball_dy = range * (width/4)
 end
 
-
 -- Determines whether the Ball bounces off a top or bottom wall
 -- or whether Right or Left scored
 function wall_collision_check()
@@ -398,7 +401,6 @@ function wall_collision_check()
 		ball_dy = ball_dy * -1
 	end
 end
-
 
 -- Ensures that Left and Right Paddles cannot
 -- go off the screen!
@@ -465,8 +467,6 @@ function paddle_collision_check(previous_ball_x)
 		end
 	end
 end
-
-
 
 function debug_menu()
 	-- Debug Information
