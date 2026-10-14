@@ -1,5 +1,4 @@
 -- Ball Properties
-BALL_SPEED = 200
 
 digits = {
 	[0] = {{1,1,1},{1,0,1},{1,0,1},{1,0,1},{1,1,1},},
@@ -23,8 +22,30 @@ joystick_right = nil
 love.mouse.setVisible(false)
 
 function love.load()
+	hit_sounds = {
+		love.audio.newSource("paddle_hit_variant_1.wav", "static"),
+		love.audio.newSource("paddle_hit_variant_2.wav", "static"),
+		love.audio.newSource("paddle_hit_variant_3.wav", "static"),
+	}
+
+	success_sounds = {
+		love.audio.newSource("success_variant_1.wav", "static"),
+		love.audio.newSource("success_variant_2.wav", "static"),
+		love.audio.newSource("success_variant_3.wav", "static"),
+		love.audio.newSource("success_variant_4.wav", "static"),
+		love.audio.newSource("success_variant_5.wav", "static"),
+	}
+
+	wall_sounds = {
+		love.audio.newSource("wall_hit_soft_1.wav", "static"),
+		love.audio.newSource("wall_hit_soft_2.wav", "static"),
+		love.audio.newSource("wall_hit_soft_3.wav", "static"),
+		love.audio.newSource("wall_hit_soft_4.wav", "static"),
+	}
+
 	refresh_gamepads()
 	get_dimensions()
+	BALL_SPEED          = width / 4
 	BALL_SIZE           = width / 100
 	player_left_height  = height/2
 	player_right_height = height/2
@@ -59,8 +80,8 @@ function love.update(dt)
 		ball_x = ball_x + ball_dx*dt;
 		ball_y = ball_y + ball_dy*dt;
 
-		wall_collision_check()
-		paddle_collision_check(previous_ball_x)
+		wall_collision_check(success_sounds, wall_sounds)
+		paddle_collision_check(previous_ball_x,hit_sounds)
 	end
 
 	-- Controller State determines
@@ -102,6 +123,12 @@ end
 function love.joystickremoved(joystick)
 	print("Joystick removed:", joystick:getName())
 	refresh_gamepads()
+end
+
+function love.resize(w, h)
+	width = w
+	height = h
+	BALL_SPEED          = width / 4
 end
 
 -- Counts the Number of Gamepads 
@@ -369,12 +396,15 @@ end
 
 -- Determines whether the Ball bounces off a top or bottom wall
 -- or whether Right or Left scored
-function wall_collision_check()
-
+function wall_collision_check(success_sounds, wall_sounds)
+	local success_sound = success_sounds[love.math.random(1, #success_sounds)]
+	local wall_sound = wall_sounds[love.math.random(1, #wall_sounds)]
 	-- Right Score Collision check
 	if ball_x > width - BALL_SIZE then
 		left_score = left_score + 1
 		spawn_timer = 2
+		success_sound:stop()
+		success_sound:play()
 		-- rally_hits = 0
 		-- ball_active = false
 		reset_ball_right()
@@ -384,6 +414,8 @@ function wall_collision_check()
 	if ball_x <= 0 then
 		right_score = right_score + 1
 		spawn_timer = 2
+		success_sound:stop()
+		success_sound:play()
 		-- ball_active = false
 		-- rally_hits = 0;
 		reset_ball_left()
@@ -391,12 +423,16 @@ function wall_collision_check()
 
 	-- Top Wall Collision Check
 	if ball_y > height - BALL_SIZE then
+		wall_sound:stop()
+		wall_sound:play()
 		ball_y  = height - BALL_SIZE
 		ball_dy = ball_dy * -1
 	end
 
 	-- Bottom Wall Collision Check
 	if ball_y <= 0 then
+		wall_sound:stop()
+		wall_sound:play()
 		ball_y = 0
 		ball_dy = ball_dy * -1
 	end
@@ -426,7 +462,7 @@ function bind_paddles()
 	end
 end
 
-function paddle_collision_check(previous_ball_x)
+function paddle_collision_check(previous_ball_x, hit_sounds)
 	-- Player Left's Hitbox
 	if ball_x < left_paddle_x + PADDLE_X_SIZE        -- Right Edge 
 	and ball_x + BALL_SIZE > left_paddle_x           -- Left Edge
@@ -437,12 +473,18 @@ function paddle_collision_check(previous_ball_x)
 		if previous_ball_x + BALL_SIZE <= left_paddle_x then
 			ball_x  = left_paddle_x - BALL_SIZE
 			ball_dx = -math.abs(ball_dx)
+			local sound = hit_sounds[love.math.random(1, #hit_sounds)]
+			sound:stop()
+			sound:play()
 			rally_speed_increase()
 
 		-- Ball came from the RIGHT side of the paddle
 		elseif previous_ball_x >= left_paddle_x + PADDLE_X_SIZE then
 			ball_x  = left_paddle_x + PADDLE_X_SIZE
 			ball_dx = math.abs(ball_dx)
+			local sound = hit_sounds[love.math.random(1, #hit_sounds)]
+			sound:stop()
+			sound:play()
 			rally_speed_increase()
 		end
 	end
@@ -457,12 +499,18 @@ function paddle_collision_check(previous_ball_x)
 		if previous_ball_x + BALL_SIZE <= right_paddle_x then
 			ball_x  = right_paddle_x - BALL_SIZE
 			ball_dx = -math.abs(ball_dx)
+			local sound = hit_sounds[love.math.random(1, #hit_sounds)]
+			sound:stop()
+			sound:play()
 			rally_speed_increase()
 
 		-- Ball came from the RIGHT side
 		elseif previous_ball_x >= right_paddle_x + PADDLE_X_SIZE then
 			ball_x  = right_paddle_x + PADDLE_X_SIZE
 			ball_dx = math.abs(ball_dx)
+			local sound = hit_sounds[love.math.random(1, #hit_sounds)]
+			sound:stop()
+			sound:play()
 			rally_speed_increase()
 		end
 	end
