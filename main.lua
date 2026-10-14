@@ -23,24 +23,24 @@ love.mouse.setVisible(false)
 
 function love.load()
 	hit_sounds = {
-		love.audio.newSource("paddle_hit_variant_1.wav", "static"),
-		love.audio.newSource("paddle_hit_variant_2.wav", "static"),
-		love.audio.newSource("paddle_hit_variant_3.wav", "static"),
+		love.audio.newSource("sound/paddle_hit/variant_1.wav", "static"),
+		love.audio.newSource("sound/paddle_hit/variant_2.wav", "static"),
+		love.audio.newSource("sound/paddle_hit/variant_3.wav", "static"),
 	}
 
 	success_sounds = {
-		love.audio.newSource("success_variant_1.wav", "static"),
-		love.audio.newSource("success_variant_2.wav", "static"),
-		love.audio.newSource("success_variant_3.wav", "static"),
-		love.audio.newSource("success_variant_4.wav", "static"),
-		love.audio.newSource("success_variant_5.wav", "static"),
+		love.audio.newSource("sound/success/variant_1.wav", "static"),
+		love.audio.newSource("sound/success/variant_2.wav", "static"),
+		love.audio.newSource("sound/success/variant_3.wav", "static"),
+		love.audio.newSource("sound/success/variant_4.wav", "static"),
+		love.audio.newSource("sound/success/variant_5.wav", "static"),
 	}
 
 	wall_sounds = {
-		love.audio.newSource("wall_hit_soft_1.wav", "static"),
-		love.audio.newSource("wall_hit_soft_2.wav", "static"),
-		love.audio.newSource("wall_hit_soft_3.wav", "static"),
-		love.audio.newSource("wall_hit_soft_4.wav", "static"),
+		love.audio.newSource("sound/wall_hit/variant_1.wav", "static"),
+		love.audio.newSource("sound/wall_hit/variant_2.wav", "static"),
+		love.audio.newSource("sound/wall_hit/variant_3.wav", "static"),
+		love.audio.newSource("sound/wall_hit/variant_4.wav", "static"),
 	}
 
 	refresh_gamepads()
