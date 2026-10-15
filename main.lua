@@ -342,7 +342,6 @@ function draw_paddles()
 	love.graphics.rectangle("fill", right_paddle_x, player_right_height, PADDLE_X_SIZE, paddle_y_size) -- Right Player 
 end
 
--- TODO: How to handle scores bigger than 9? maybe first to 9 wins? 
 function draw_score(score,x,y)
 	local score_string = tostring(score)
 	for i = 1, #score_string do
